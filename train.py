@@ -60,7 +60,7 @@ def main(args):
         euc_loss = mcnn.loss(density_map_estimation, density_map_placeholder)
 
         # define optimization algorithm
-        optimizer = tf.train.AdamOptimizer(args.learning_rate)
+        optimizer = tf.train.GradientDescentOptimizer(args.learning_rate)
 
         # training node
         train_op = optimizer.minimize(euc_loss)
@@ -130,7 +130,7 @@ def main(args):
                 train_duration = end_time - start_time
 
                 # compute the average training loss
-                avg_train_loss = total_train_loss / len(images_list)
+                avg_train_loss = total_train_loss 
 
                 # Then we print the results for this epoch, also log it
                 print("Epoch {} of {} took {:.3f}s".format(
@@ -179,7 +179,7 @@ def main(args):
                 val_end_time = time.time()
                 val_duration = val_end_time - val_start_time
 
-                avg_val_loss = total_val_loss / len(val_images_list)
+                avg_val_loss = total_val_loss 
 
                 # print and log the result
                 print("  Validation loss:\t\t{:.6f}".format(avg_val_loss))
@@ -219,11 +219,11 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--log_dir', default='./log', type=str)
-    parser.add_argument('--num_epochs', default=1, type=int)
+    parser.add_argument('--num_epochs', default=200, type=int)
     parser.add_argument('--learning_rate', default=0.01, type=float)
-    parser.add_argument('--root_path', default='./data', type=str)
+    parser.add_argument('--root_path', default='./data_new', type=str)
     parser.add_argument('--session_id', default=2, type=int)
-    parser.add_argument('--retrain', default=True, type=bool)
-    parser.add_argument('--base_model_path', default='log/session:2/weights.3.npz', type=str)
+    parser.add_argument('--retrain', default=False, type=bool)
+    parser.add_argument('--base_model_path', default='log/session:2/weights.1.npz', type=str)
     args = parser.parse_args()
     main(args)
