@@ -29,7 +29,7 @@ def conv(input_tensor, name, kernel_size, n_output, stride = 1, activation = tf.
         biases = tf.Variable(tf.constant(0.0, shape=[n_output]), dtype=tf.float32, name='biases')
         conv = tf.nn.conv2d(input_tensor, weights, (1, stride, stride, 1), padding='SAME')
         activation = activation(tf.nn.bias_add(conv, biases))
-        tf.summary.histogram("weights", weights)
+        # tf.summary.histogram("weights", weights)
         return activation
 def pool(input_tensor, name, kernel_size, stride):
     """
