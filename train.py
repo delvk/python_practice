@@ -17,31 +17,16 @@ import time
 import src.loader as loader
 
 # import src.layer as layer
-import src.mcnn as mcnn
+from . import src.mcnn as mcnn
 import utils as utils
 
-
-def load_data(data_root, mode):
+def log_print(something, log_file=None):
     """
-     The images are built from tensor which must be 4-D with shape [batch_size, height, width, channels]
+    This print and log the same time
     """
-    image_list = []
-    gt_list = []
-    if mode == "train":
-        image_list, gt_list = utils.get_data_list(data_root, mode="train")
-    elif mode == "valid":
-        image_list, gt_list = utils.get_data_list(data_root, mode="valid")
-    else:
-        image_list, gt_list = utils.get_data_list(data_root, mode="test")
-
-    # convert images and index to array
-    for image_index in range(len(image_list)):
-        # load image and ground truth
-        images = rgb2gray(np.asarray(imread(image_list[image_index]), dtype=np.float32))
-        d_maps = np.asarray(
-            pd.read_csv(gt_list[image_index], header=None), dtype=np.float32
-        )
-    return images, d_maps
+    print(something)
+    if log_file:
+        log_file.write(something)
 
 
 def main(args):
@@ -81,8 +66,8 @@ def main(args):
             # initialize the logging in this session
             writer = tf.summary.FileWriter(join(session_path, "training.log"))
             writer.add_graph(sess.graph)
-            train_log = open("training_process.log", "w+")
-
+            train_log = open(join(session_path,"training_process.log"), "w+")
+            train_loss_log = open(join(session_path,"train_loss.log"), "a+")
             # running session
             sess.run(init)
             if args.retrain:
@@ -93,20 +78,21 @@ def main(args):
                 # record starting time
                 start_time = time.time()
                 print("Epoch: {}".format(epoch + 1))
-                
-                # get the list of the train images and ground_truth
-                images_list, d_maps_list = utils.get_data_list(args.root_path)
 
-                # define total_train_loss
-                total_train_loss = 0
+                # get the list of the train images and ground_truth
+                train_img_list, train_d_map_list = utils.get_data_list(args.train_path)
+
+                # define train_total_loss
+                train_total_loss = 0
 
                 # loop through all the training images
-                for image_index in range(len(images_list)):
+                number_of_images = len(train_img_list)
+                for img_idx in range(number_of_images):
                     # load image
-                    train_image = utils.load_image(images_list[image_index])
+                    train_image = utils.load_image(train_img_list[img_idx])
                     # and ground truth
                     train_d_map = utils.load_ground_truth(
-                        d_maps_list[image_index], downsize=True
+                        train_d_map_list[img_idx], downsize=True
                     )
 
                     # reshape the tensor before feeding it to the network
@@ -114,85 +100,71 @@ def main(args):
                     train_d_map = utils.reshape_tensor(train_d_map)
 
                     # prepare the feed_dictionary
-                    feed_dictionary = {
+                    feed_dict = {
                         image_placeholder: train_image,
                         d_map_placeholder: train_d_map,
                     }
                     # compute the loss of one image
                     _, loss_per_image = sess.run(
-                        [train_op, euc_loss], feed_dict=feed_dictionary
+                        [train_op, euc_loss], feed_dict=feed_dict
                     )
 
                     # accumulate the loss all over the training images
-                    total_train_loss += loss_per_image
+                    train_total_loss += loss_per_image
 
                 # ending of the for loop - mean end 1 epoch
                 end_time = time.time()
                 train_duration = end_time - start_time
 
                 # compute the average training loss
-                avg_train_loss = total_train_loss
+                train_avg_loss = train_total_loss/number_of_images
 
                 # Then we print the results for this epoch, also log it
-                print(
-                    "Epoch {} of {} took {:.3f}s".format(
-                        epoch + 1, args.num_epochs, train_duration
+                temp_str =  "Epoch {}/{} took {:.3f}s - MAE: {:.4f}".format(
+                        epoch + 1, args.num_epochs, train_duration, train_avg_loss
                     )
+                log_print(temp_str, log_file=train_log)
+                
+                # write to csv file 
+                train_loss_log.writelines(train_avg_loss)
+# =================================================================================================================
+                # Validate the model
+                val_img_list, val_gt_list = utils.get_data_list(
+                    args.val_path
                 )
-                train_log.write(
-                    "\nEpoch {} of {} took {:.3f}s".format(
-                        epoch + 1, args.num_epochs, train_duration
-                    )
-                )
-                print("  Training loss:\t\t{:.6f}".format(avg_train_loss))
-                train_log.write("\n  Training loss:\t\t{:.6f}".format(avg_train_loss))
-
-                # validating the model, we do this every epoch, feel free to config it for your purpose
-                val_images_list, val_gts_list = utils.get_data_list(
-                    args.root_path, mode="valid"
-                )
-                val_start_time = time.time()
-
                 # define val_total_loss
-                total_val_loss = 0
+                val_total_loss = 0
 
                 # loop all validation images
-                for i in range(len(val_images_list)):
+                for i in range(len(val_img_list)):
                     # load image
-                    val_image = rgb2gray(
-                        np.asarray(imread(images_list[i]), dtype=np.float32)
-                    )
+                    val_image = utils.load_image(train_img_list[i])
 
                     # and ground truth
-                    val_d_map = np.asarray(
-                        pd.read_csv(val_gts_list[i], header=None), dtype=np.float32
-                    )
-                    val_d_map = utils.down_size_d_map(val_d_map)
+                    val_d_map = utils.load_ground_truth(val_gt_list[i], downsize=True)
 
                     # reshape the tensor for feeding it to the network
                     val_image = utils.reshape_tensor(val_image)
                     val_d_map = utils.reshape_tensor(val_d_map)
 
                     # Prepare the feed_dict
-                    feed_dict_data = {
+                    feed_dict_val = {
                         image_placeholder: val_image,
                         d_map_placeholder: val_d_map,
                     }
                     # compute the loss per image
-                    loss_per_image = sess.run(euc_loss, feed_dict=feed_dict_data)
+                    loss_per_image = sess.run(euc_loss, feed_dict=feed_dict_val)
 
                     # accumulate the validation loss across all the images.
-                    total_val_loss += loss_per_image
-                val_end_time = time.time()
-                val_duration = val_end_time - val_start_time
+                    val_total_loss += loss_per_image
 
-                avg_val_loss = total_val_loss
+                val_avg_loss = val_total_loss
 
                 # print and log the result
-                print("  Validation loss:\t\t{:.6f}".format(avg_val_loss))
+                print("  Validation loss:\t\t{:.6f}".format(val_avg_loss))
                 print(
                     "Validation over {} images took {:.3f}s".format(
-                        len(val_images_list), val_duration
+                        len(val_img_list), val_duration
                     )
                 )
                 print("===========================================================")
@@ -204,7 +176,7 @@ def main(args):
                 utils.save_weights(
                     Graph, join(session_path, "weights.%s" % (epoch + 1))
                 )
-                summary_str = sess.run(summary, feed_dict=feed_dict_data)
+                summary_str = sess.run(summary, feed_dict=feed_dict_val)
                 writer.add_summary(summary_str, epoch)
 
                 # testing
@@ -234,8 +206,13 @@ if __name__ == "__main__":
     parser.add_argument("--num_epochs", default=3, type=int)
     parser.add_argument("--learning_rate", default=0.01, type=float)
     parser.add_argument(
-        "--root_path",
+        "--train_path",
         default="/home/jake/Desktop/Projects/Python/dataset/SH_B/cooked/train_10",
+        type=str,
+    )
+    parser.add_argument(
+        "--val_path",
+        default="/home/jake/Desktop/Projects/Python/dataset/SH_B/cooked/val_10",
         type=str,
     )
     parser.add_argument("--session_id", default=2, type=int)

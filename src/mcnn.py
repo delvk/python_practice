@@ -52,7 +52,7 @@ def loss(estimate, grouth_truth):
     :param gt: Ground truth density map
     :return: scalar loss after doing pixel wise mean square error.
     """
-    return tf.losses.mean_squared_error(estimate,grouth_truth)                            
+    return tf.losses.mean_squared_error(estimate,grouth_truth)                   
 
 def test_loss_layer():
     if __name__ == "__main__":
