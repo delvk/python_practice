@@ -1,3 +1,11 @@
 data/
 .vscode/
 ignore/
+__pycache__/
+linhtinh_test.py
+log/
+src/__init__.py
+src/__pycache__/__init__.cpython-36.pyc
+src/__pycache__/mcnn.cpython-36.pyc
+test.py
+test/

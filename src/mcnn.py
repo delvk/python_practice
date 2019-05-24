@@ -68,12 +68,12 @@ def loss(estimate, grouth_truth):
     Computes mean square error between the network estimated density map and the ground truth density map.
     :param est: Estimated density map
     :param gt: Ground truth density map
-    :return: scalar loss after doing pixel wise mse and mae.
+    :return: scalar loss after doing pixel wise mse
     """
-    mse = tf.losses.mean_squared_error(estimate, grouth_truth)
-    mae = tf.losses.absolute_difference(estimate, grouth_truth)
 
-    return mse, mae
+    mse = tf.losses.mean_squared_error(grouth_truth, estimate) * 1000
+
+    return mse
 
 
 def test_loss_layer():

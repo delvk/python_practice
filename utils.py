@@ -139,5 +139,14 @@ def load_ground_truth(path, downsize=True):
         ht_1 = int(ht / 4)
         arr = resize(arr, (wd_1, ht_1), anti_aliasing=True)
         # return the true sum of ground truth value
-        arr = arr*((wd*ht)/(wd_1*ht_1))
+        arr = arr * ((wd * ht) / (wd_1 * ht_1))
     return arr
+
+
+def loss_per_image(gt_map, et_map):
+    gt_map_1 = np.reshape(gt_map, newshape=(gt_map.shape[1], gt_map.shape[2]))
+    et_map_1 = np.reshape(et_map, newshape=(et_map.shape[1], et_map.shape[2]))
+    gt_count = np.sum(gt_map_1)
+    et_count = np.sum(et_map_1)
+
+    return abs(gt_count-et_count)
