@@ -8,10 +8,12 @@ Fuse layer which concatenates different column outputs and fuses the features wi
 """
 # import library
 import tensorflow as tf
+
 # import layer as L
 import numpy as np
 
-def conv(input_tensor, name, kernel_size, n_output, stride = 1, activation = tf.nn.relu):
+
+def conv(input_tensor, name, kernel_size, n_output, stride=1, activation=tf.nn.relu):
     """
     Convolutional layer:
     :param input_tensor: Input tensor (feature map/image)
@@ -25,12 +27,24 @@ def conv(input_tensor, name, kernel_size, n_output, stride = 1, activation = tf.
 
     n_in = input_tensor.get_shape()[-1].value
     with tf.variable_scope(name):
-        weights = tf.Variable(tf.truncated_normal(shape=(kernel_size, kernel_size, n_in, n_output), stddev=0.01), dtype=tf.float32, name='weights')
-        biases = tf.Variable(tf.constant(0.0, shape=[n_output]), dtype=tf.float32, name='biases')
-        conv = tf.nn.conv2d(input_tensor, weights, (1, stride, stride, 1), padding='SAME')
+        weights = tf.Variable(
+            tf.truncated_normal(
+                shape=(kernel_size, kernel_size, n_in, n_output), stddev=0.01
+            ),
+            dtype=tf.float32,
+            name="weights",
+        )
+        biases = tf.Variable(
+            tf.constant(0.0, shape=[n_output]), dtype=tf.float32, name="biases"
+        )
+        conv = tf.nn.conv2d(
+            input_tensor, weights, (1, stride, stride, 1), padding="SAME"
+        )
         activation = activation(tf.nn.bias_add(conv, biases))
         # tf.summary.histogram("weights", weights)
         return activation
+
+
 def pool(input_tensor, name, kernel_size, stride):
     """
     Max Pooling layer
@@ -40,19 +54,27 @@ def pool(input_tensor, name, kernel_size, stride):
     :param stride: stride across size,
     :return: output tensor (feature map) with reduced feature size (Scaled down by 2).
     """
-    return tf.nn.max_pool(input_tensor,
-                        ksize=[1, kernel_size, kernel_size, 1],
-                        strides=[1, stride, stride, 1],
-                        padding='SAME',
-                        name=name)
+    return tf.nn.max_pool(
+        input_tensor,
+        ksize=[1, kernel_size, kernel_size, 1],
+        strides=[1, stride, stride, 1],
+        padding="SAME",
+        name=name,
+    )
+
+
 def loss(estimate, grouth_truth):
     """
     Computes mean square error between the network estimated density map and the ground truth density map.
     :param est: Estimated density map
     :param gt: Ground truth density map
-    :return: scalar loss after doing pixel wise mean square error.
+    :return: scalar loss after doing pixel wise mse and mae.
     """
-    return tf.losses.mean_squared_error(estimate,grouth_truth)                   
+    mse = tf.losses.mean_squared_error(estimate, grouth_truth)
+    mae = tf.losses.absolute_difference(estimate, grouth_truth)
+
+    return mse, mae
+
 
 def test_loss_layer():
     if __name__ == "__main__":
@@ -61,48 +83,49 @@ def test_loss_layer():
         mse = loss(x, y)
         sess = tf.Session()
         dict = {
-            x: 5*np.ones(shape=(1,20,20,1)),
-            y: 4*np.ones(shape=(1,20,20,1))
+            x: 5 * np.ones(shape=(1, 20, 20, 1)),
+            y: 4 * np.ones(shape=(1, 20, 20, 1)),
         }
         loss_value = sess.run(mse, feed_dict=dict)
-        print('MSE: {:.2f}'.format(loss_value))
+        print("MSE: {:.2f}".format(loss_value))
         sess.close()
 
+
 def first_net_9x9(x):
-    net = conv(x, name='conv_9x9_1', kernel_size=9, n_output=16)
-    net = pool(net, name='pool_9x9_1', kernel_size=2, stride=2)
+    net = conv(x, name="conv_9x9_1", kernel_size=9, n_output=16)
+    net = pool(net, name="pool_9x9_1", kernel_size=2, stride=2)
 
-    net = conv(net, name='conv_9x9_2', kernel_size=7, n_output=32)
-    net = pool(net, name='pool_9x9_2', kernel_size=2, stride=2)
+    net = conv(net, name="conv_9x9_2", kernel_size=7, n_output=32)
+    net = pool(net, name="pool_9x9_2", kernel_size=2, stride=2)
 
-    net = conv(net, name='conv_9x9_3', kernel_size=7, n_output=16)
-    net = conv(net, name='conv_9x9_4', kernel_size=7, n_output=8)
+    net = conv(net, name="conv_9x9_3", kernel_size=7, n_output=16)
+    net = conv(net, name="conv_9x9_4", kernel_size=7, n_output=8)
 
     return net
 
 
 def second_net_7x7(x):
-    net = conv(x, name='conv_7x7_1', kernel_size=7, n_output=20)
-    net = pool(net, name='pool_7x7_1', kernel_size=2, stride=2)
+    net = conv(x, name="conv_7x7_1", kernel_size=7, n_output=20)
+    net = pool(net, name="pool_7x7_1", kernel_size=2, stride=2)
 
-    net = conv(net, name='conv_7x7_2', kernel_size=5, n_output=40)
-    net = pool(net, name='pool_7x7_1', kernel_size=2, stride=2)
+    net = conv(net, name="conv_7x7_2", kernel_size=5, n_output=40)
+    net = pool(net, name="pool_7x7_1", kernel_size=2, stride=2)
 
-    net = conv(net, name='conv_7x7_3', kernel_size=5, n_output=20)
-    net = conv(net, name='conv_7x7_4', kernel_size=5, n_output=10)
+    net = conv(net, name="conv_7x7_3", kernel_size=5, n_output=20)
+    net = conv(net, name="conv_7x7_4", kernel_size=5, n_output=10)
 
     return net
 
 
 def third_net_5x5(x):
-    net = conv(x, name='conv_5x5_1', kernel_size=5, n_output=24)
-    net = pool(net, name='pool_5x5_1', kernel_size=2, stride=2)
+    net = conv(x, name="conv_5x5_1", kernel_size=5, n_output=24)
+    net = pool(net, name="pool_5x5_1", kernel_size=2, stride=2)
 
-    net = conv(net, name='conv_5x5_2', kernel_size=3, n_output=48)
-    net = pool(net, name='pool_5x5_1', kernel_size=2, stride=2)
+    net = conv(net, name="conv_5x5_2", kernel_size=3, n_output=48)
+    net = pool(net, name="pool_5x5_1", kernel_size=2, stride=2)
 
-    net = conv(net, name='conv_5x5_3', kernel_size=3, n_output=24)
-    net = conv(net, name='conv_5x5_4', kernel_size=3, n_output=12)
+    net = conv(net, name="conv_5x5_3", kernel_size=3, n_output=24)
+    net = conv(net, name="conv_5x5_4", kernel_size=3, n_output=12)
 
     return net
 
@@ -120,9 +143,9 @@ def build_network(input_tensor, norm=False):
 
     :param: norm - normalize the image to 0-1 value instead of 0-255
     """
-    tf.summary.image('input', input_tensor, 1)
+    tf.summary.image("input", input_tensor, 1)
     if norm:
-        input_tensor = tf.cast(input_tensor, tf.float32)*(1./255)-0.5
+        input_tensor = tf.cast(input_tensor, tf.float32) * (1.0 / 255) - 0.5
     # mapping network
     net_1_output = first_net_9x9(input_tensor)
     net_2_output = second_net_7x7(input_tensor)
@@ -132,15 +155,19 @@ def build_network(input_tensor, norm=False):
 
     return fuse_net
 
+
 if __name__ == "__main__":
     x = tf.placeholder(tf.float32, [1, 192, 256, 1])
     net = build_network(x)
     init = tf.initialize_all_variables()
     sess = tf.Session()
     sess.run(init)
-    d_map = sess.run(net,feed_dict={x:255*np.ones(shape=(1,192,256,1), dtype=np.float32)})
+    d_map = sess.run(
+        net, feed_dict={x: 255 * np.ones(shape=(1, 192, 256, 1), dtype=np.float32)}
+    )
     prediction = np.asarray(d_map)
     prediction = np.squeeze(prediction, axis=0)
     prediction = np.squeeze(prediction, axis=2)
-    print('===========================================')
-    print('d_map shape: ', d_map.shape)
+    print("===========================================")
+    print("d_map shape: ", d_map.shape)
+

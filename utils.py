@@ -5,6 +5,7 @@ import glob
 import random
 import sys
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 from skimage.transform import rescale, resize
 from skimage.data import imread
@@ -29,7 +30,7 @@ def get_data_list(
     ground_truth_path = join(root_path, gt_name)
     image_list = [file for file in glob.glob(join(image_path, extension))]
     gt_list = []
-    
+
     for filepath in image_list:
         file_id = get_file_id(filepath)
         gt_file_path = join(ground_truth_path, file_id + ".csv")
@@ -132,8 +133,11 @@ def load_ground_truth(path, downsize=True):
     raw_csv = pd.read_csv(path, sep=",", header=None)
     arr = np.asarray(raw_csv, dtype=np.float32)
     if downsize:
-        wd = int(arr.shape[0] / 4)
-        ht = int(arr.shape[1] / 4)
-        resize(arr, (wd, ht), anti_aliasing=True)
-
+        wd = arr.shape[0]
+        ht = arr.shape[1]
+        wd_1 = int(wd / 4)
+        ht_1 = int(ht / 4)
+        arr = resize(arr, (wd_1, ht_1), anti_aliasing=True)
+        # return the true sum of ground truth value
+        arr = arr*((wd*ht)/(wd_1*ht_1))
     return arr
